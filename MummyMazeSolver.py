@@ -291,14 +291,37 @@ def SolStr(sol):
         s.append(Move2Str(i))
     return "Solution: After {:d} steps:\n".format(len(sol))+(', '.join(s))
 
-
+def InitFromTaM(TaMStr):  #Theseus and the Minotaur
+    TaMlist=[i.strip() for i in TaMStr.split('\n') if i!='']
+    lattice=TaMlist[1:10]
+    walls=[]
+    for i in range(9):
+        if(lattice[i][0]=='6'):
+            break
+        for j in range(14):
+            cell=lattice[i][j]
+            if(cell=='6'):
+                break
+            elif(cell!='0'):
+                if(cell=='1'):
+                    walls.append([i+1,j+1,LEFT])
+                elif(cell=='2'):
+                    walls.append([i+1,j+1,UP])
+                elif(cell=='3'):
+                    walls.append([i+1,j+1,UP,LEFT])
+    if(i==8):i=9
+    if(j==13):j=14
+    mm.mazesize=[i,j]
+    items='m{0},{1}/e{2},{3}/x{4},{5}'.format(int(TaMlist[15])+1,int(TaMlist[14])+1,int(TaMlist[12])+1,int(TaMlist[11])+1,
+                                              int(TaMlist[18])+1,int(TaMlist[17])+1)
+    mm.Setup(walls,items)
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,format='%(message)s')
     
     #init
     #the 14th puzzle in Pharaoh's Tomb, has the solution with most moves
     mm=CMummyMaze(10,10)
-    walls=[[1,5,DOWN],[1,6,DOWN],[1,7,DOWN],[1,8,DOWN],[1,9,LEFT],[1,10,LEFT],[\
+    #walls=[[1,5,DOWN],[1,6,DOWN],[1,7,DOWN],[1,8,DOWN],[1,9,LEFT],[1,10,LEFT],[\
 2,2,DOWN],[2,7,DOWN],[3,1,DOWN],[3,2,DOWN],[3,6,LEFT],[3,10,LEFT],[4,\
 2,DOWN],[4,4,DOWN,LEFT],[4,5,DOWN],[4,8,DOWN],[4,9,DOWN,LEFT],[4,10,\
 DOWN,LEFT],[5,1,DOWN],[5,4,DOWN],[5,5,DOWN],[5,8,DOWN],[5,9,DOWN],[6,\
@@ -306,8 +329,37 @@ DOWN,LEFT],[5,1,DOWN],[5,4,DOWN],[5,5,DOWN],[5,8,DOWN],[5,9,DOWN],[6,\
 7,8,DOWN,LEFT],[7,10,LEFT],[8,2,LEFT],[8,5,DOWN,LEFT],[8,7,LEFT],[8,\
 10,LEFT],[9,5,LEFT],[9,6,DOWN],[9,8,DOWN],[9,9,DOWN,LEFT],[10,6,LEFT],\
 [10,9,LEFT]]
-    items='x4,10/e7,1/t2,1/rs5,4/rm8,6'   #gate always faces down, see also class's __SetMovableItems func
-    mm.Setup(walls,items)
+    #items='x4,10/e7,1/t2,1/rs5,4/rm8,6'   #gate always faces down, see also class's __SetMovableItems func
+    #mm.Setup(walls,items)
+    
+    #level 87 of game: Theseus and the Minotaur
+    #0-empty 1-wall at left, 2-wall at top, 3-wall at both left and top
+    #6-border
+    #Theseus/Minotaur/Goal coordinates orignating from the upper-left corner (0,0)
+    TaMStr='''
+Theseus and the Minotaur Level
+00100000001000
+01021320121331
+02300020021100
+01022130210111
+01111121111100
+00000110111133
+02221001001001
+23113201202021
+00002200122200
+Theseus
+12
+5
+Minotaur
+6
+3
+Goal
+13
+5
+End
+85
+'''
+    InitFromTaM(TaMStr)
     
     #True: find a solution 
     #False: find the best solution with least moves
