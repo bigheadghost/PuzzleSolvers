@@ -1,6 +1,6 @@
 # This is a puzzle solver for Magic Griddlers of big fish games
 
-import itertools,pickle,logging,os.path
+import itertools,pickle,logging,os.path,decimal,math
 
 #setup which symbol to use for display the lattice
 OCCUPIED='■'
@@ -14,9 +14,9 @@ class CMagicGriddlerSolver:
     UNKNOWN='?'
     
     def __init__(self,patrow,patcol):
-        logging.basicConfig(level=logging.INFO, format='%(message)s')  #%(asctime)s - %(levelname)s - 
-        logging.info("initializing...")
-        
+        logging.basicConfig(level=logging.WARN, format='%(message)s')  #%(asctime)s - %(levelname)s - 
+        logging.warn("initializing...")
+        self.OneShot=True
         rownum=len(patrow)
         colnum=len(patcol)
         self.rownum=rownum
@@ -32,24 +32,30 @@ class CMagicGriddlerSolver:
             self.lattice.append([CMagicGriddlerSolver.UNKNOWN for j in range(colnum)])
         
         self.__patsetrels={}
-        self.loaddata()
-        logging.info("done.\nsize: {0} * {1}, rowtotal:{2},  coltotal:{3}\ntotal complexity:{4:.1e}\n".format
-                     (rownum,colnum, 2**colnum, 2**rownum,2**(rownum*colnum)))
+        if(not self.OneShot):self.loaddata()
+        logging.warn("done.\nsize: {0} * {1}, rowtotal:{2},  coltotal:{3}\ntotal complexity:{4:.1e}\n".format
+                     (rownum,colnum, 2**colnum, 2**rownum, decimal.Decimal(2**(rownum*colnum))))
 
         self.__rowComplexity=[]
         self.__colComplexity=[]
         self.rowsets=[]
         self.colsets=[]
         
-        logging.debug("Calculating row patterns...")
+        logging.info("Calculating row patterns...")
         for i in range(rownum):
-            self.rowsets.append(self.__patsetrels[colnum][tuple(patrow[i])])
+            if(self.OneShot):
+                self.rowsets.append(self.candidate(patrow[i],colnum))
+            else:
+                self.rowsets.append(self.__patsetrels[colnum][tuple(patrow[i])])
         logging.debug(ArrayStr(self.rowsets,True,',',5))
         self.__rowComplexity.append(printarrStat(self.rowsets))
         
-        logging.debug("Calculating column patterns...")
+        logging.info("Calculating column patterns...")
         for i in range(colnum):
-            self.colsets.append(self.__patsetrels[rownum][tuple(patcol[i])])
+            if(self.OneShot):
+                self.colsets.append(self.candidate(patcol[i],rownum))
+            else:            
+                self.colsets.append(self.__patsetrels[rownum][tuple(patcol[i])])
         logging.debug(ArrayStr(self.colsets,True,',',5))
         self.__colComplexity.append(printarrStat(self.colsets))
 
@@ -78,7 +84,23 @@ class CMagicGriddlerSolver:
         else:
             with open(CMagicGriddlerSolver.DATAFILENAME, 'rb') as f:
                 self.__patsetrels = pickle.load(f)
-    
+
+    def candidate(self,pat,maxlen):  
+        #generate list of all candidate set having the given pat.
+        #pat e.g. [3,2,6]
+        candi = []
+        for i in range(maxlen+2-sum(pat)-len(pat)):  
+            #i is the UNOCCUPIED count 
+            cans = CMagicGriddlerSolver.UNOCCUPIED*i + CMagicGriddlerSolver.OCCUPIED*pat[0]  
+            if len(pat)==1:  
+                tail = CMagicGriddlerSolver.UNOCCUPIED*(maxlen-len(cans))  
+                candi.append(cans+tail)  
+            else:  
+                tail = [CMagicGriddlerSolver.UNOCCUPIED+j for j in self.candidate(pat[1:], maxlen-len(cans)-1)]  
+                candi.extend([cans + j for j in tail])  
+        return candi
+
+
     def getLinePattern(line):
         tmp=line.split(CMagicGriddlerSolver.UNOCCUPIED)
         if list(set(tmp))==['']:
@@ -148,9 +170,10 @@ class CMagicGriddlerSolver:
         flag=True
         scanNO=0
         while (flag):
-            self.ScanPat()            
             scanNO+=1
-            
+            logging.info("scan NO.%d...",scanNO)
+            self.ScanPat()            
+
             flag=False
             for i in self.lattice:
                 if CMagicGriddlerSolver.UNKNOWN in i:
@@ -159,12 +182,12 @@ class CMagicGriddlerSolver:
             if flag:    
                 pass
             else:
-                logging.info('bingo!')
+                logging.warn('bingo!')
                 print("After",scanNO,"ScanPat, we got:")
-                logging.info(ArrayStr(self.lattice).replace(CMagicGriddlerSolver.OCCUPIED,OCCUPIED).replace(CMagicGriddlerSolver.UNOCCUPIED,UNOCCUPIED))
+                logging.warn(ArrayStr(self.lattice).replace(CMagicGriddlerSolver.OCCUPIED,OCCUPIED).replace(CMagicGriddlerSolver.UNOCCUPIED,UNOCCUPIED))
 
-        logging.debug(','.join(map(str,self.__rowComplexity)))
-        logging.debug(','.join(map(str,self.__colComplexity)))
+        logging.info(','.join(map(str,self.__rowComplexity)))
+        logging.info(','.join(map(str,self.__colComplexity)))
 
 ################### function definition #####################
 from functools import reduce
@@ -199,8 +222,8 @@ def ArrayStr(arr,ShowLineNumber=False, delimeter='',MaxItemOnEachRow="all"):
 def printarrStat(arr):
     s=[len(row) for row in arr]
     a=product(s)
-    logging.debug("Complexity: "+"*".join([str(x) for x in s if x>1])+"={0:.3g}\n".format(a))
-    return a
+    logging.info("Complexity: "+"*".join([str(x) for x in s if x>1])+"={0:.3g}\n".format(decimal.Decimal(a)))
+    return math.log10(a)
 
 
 ################### main #####################
@@ -209,6 +232,9 @@ if __name__ == '__main__':
     #patcol=[4,33,312,3121,73,64,712,2322,13141,75,1314,2331,92,612,611,74,3121,312,33,3]
     patrow=[22,11,5,11,22]
     patcol=[111,5,1,111,5]
+    patrow=[32,8,[10],311,521,521,411,[15],[19],[6,14],[6,1,12],[6,1,10],7218,61121111,5141,5414111,5118,5218,61213,6321,615,163,272,[3,3,10,4],[9,12,1],[22,1],[21,4],[1,17,1],2851,224,5211,5]
+    patcol=[5,5,5,31,31,5,5,6,56,95,[11,5,1],[13,6,1],[14,6,1],[7,12,1],[6,1,11,1],311191,[3,4,10],811281,[10,1,1,1,7,1],[10,4,1,1,7,1],32521262,32421141,26311111,[12,3,1,2,1,1,1],32731212,2631111,[12,3,1,5],631,641,54,411,5]
     
     mgs=CMagicGriddlerSolver(patrow, patcol)
     mgs.Solve()
+
